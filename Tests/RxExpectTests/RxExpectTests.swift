@@ -1,4 +1,5 @@
 import XCTest
+import RxRelay
 import RxSwift
 import RxTest
 import RxExpect
@@ -34,16 +35,27 @@ final class RxExpectTests: XCTestCase {
     }
   }
 
-  @available(*, deprecated)
-  func testAssertEventsWithVariable() {
-    let test = RxExpect()
-    let variable = Variable<Int>(0)
-    test.input(variable, [
+    let publishRelay = PublishRelay<Int>()
+    test.input(publishRelay, [
       .next(300, 1),
       .next(400, 2),
       .next(500, 3),
+    ])
+    test.assert(publishRelay.asObservable()) { events in
+      XCTAssertEqual(events, [
+        .next(300, 1),
+        .next(400, 2),
+        .next(500, 3),
       ])
-    test.assert(variable.asObservable()) { events in
+    }
+
+    let behaviorRelay = BehaviorRelay<Int>(value: 0)
+    test.input(behaviorRelay, [
+      .next(300, 1),
+      .next(400, 2),
+      .next(500, 3),
+    ])
+    test.assert(behaviorRelay.asObservable()) { events in
       XCTAssertEqual(events, [
         .next(0, 0),
         .next(300, 1),
@@ -73,7 +85,7 @@ final class RxExpectTests: XCTestCase {
   func testAssertMergeOnMainScheduler() {
     let test = RxExpect()
     let subjects: [PublishSubject<String>] = [.init(), .init(), .init()]
-    let observable = Observable<String>.merge(subjects).observeOn(MainScheduler.instance)
+    let observable = Observable<String>.merge(subjects).observe(on: MainScheduler.instance)
     test.input(subjects[0], [
       .next(500, "A"),
     ])
